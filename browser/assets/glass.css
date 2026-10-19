@@ -1,0 +1,69 @@
+/* Rad's liquid glass look, used by the start page. */
+:root { --text: #fff; --dim: rgba(255,255,255,.62); --pink: #ff3d81; }
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body { font-family: system-ui, sans-serif; color: var(--text); background: #07070c; overflow-x: hidden; }
+
+/* Slowly drifting colour behind everything, so the glass has something to bend. */
+.bg { position: fixed; inset: -25%; z-index: -1; filter: blur(70px) saturate(140%); opacity: .8;
+  background:
+    radial-gradient(circle at 18% 28%, #6d28d9 0, transparent 34%),
+    radial-gradient(circle at 82% 22%, #ff3d81 0, transparent 32%),
+    radial-gradient(circle at 70% 82%, #ff9f43 0, transparent 34%),
+    radial-gradient(circle at 25% 85%, #0a84ff 0, transparent 30%);
+  animation: drift 26s ease-in-out infinite alternate; }
+@keyframes drift { to { transform: translate(4%, -3%) rotate(8deg) scale(1.08); } }
+
+/* The glass itself: blur and saturate what is behind, a soft white wash, a bright top edge. */
+.glass {
+  background: linear-gradient(180deg, rgba(255,255,255,.20), rgba(255,255,255,.07));
+  backdrop-filter: blur(28px) saturate(170%);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  border: 1px solid rgba(255,255,255,.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.45), inset 0 -1px 0 rgba(255,255,255,.06), 0 10px 30px rgba(0,0,0,.28);
+  border-radius: 22px;
+  transition: transform .14s ease, background .14s ease, box-shadow .14s ease;
+}
+.glass:hover { transform: scale(1.06);
+  background: linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,.12));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 14px 36px rgba(0,0,0,.35); }
+
+.glass-input {
+  font-size: 19px; padding: 15px 24px; border-radius: 40px; outline: none; color: #fff;
+  background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.08));
+  backdrop-filter: blur(28px) saturate(170%);
+  border: 1px solid rgba(255,255,255,.25);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.45);
+}
+.glass-input:focus { border-color: rgba(255,255,255,.7); background: rgba(255,255,255,.2); }
+.glass-input::placeholder { color: var(--dim); }
+
+.label { font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--dim);
+  margin: 0 0 12px 4px; }
+button.glass { color: #fff; font: inherit; font-size: 14px; padding: 10px 18px; cursor: pointer; border-radius: 30px; }
+
+/* The pointer is the focus; no browser focus outlines on Rad's own pages. */
+*:focus, *:focus-visible { outline: none; }
+
+/* No rectangular tap flash: round buttons press round. */
+* { -webkit-tap-highlight-color: transparent; }
+.gbtn:active, .plus:active, .pill:active { transform: scale(.92); }
+
+/* Rad's liquid glass (style B): clear, lifts the colours behind it,
+   a bright light along the top rim. Used by every glass piece so they all match. */
+.gbar, .plus, .glassbar, .side, .gsheet, .msg .alt, .glass, .glass-input {
+  /* Almost no white and almost no blur: the picture stays sharp through the glass, the rim does the work. */
+  /* Fully clear: no white fill, no blur, no brightening. Only a thin light edge says it is glass. */
+  background: transparent !important;
+  backdrop-filter: saturate(150%) !important;
+  -webkit-backdrop-filter: saturate(150%) !important;
+  border: 0 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.75), inset 0 -1px 0 rgba(255,255,255,.18),
+    inset 0 0 0 1px rgba(255,255,255,.22), 0 10px 28px rgba(0,0,0,.22) !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,.5);
+}
+.gbar::before, .gbar::after { display: none; }
+.gbar input, .glassbar input { background: transparent !important; border-color: transparent; }
+.gbtn:hover, .plus:hover, .msg .alt:hover { background: rgba(255,255,255,.16) !important; }
+/* Panels that hold lots of text get a little more blur behind them, so it stays readable. */
+.side, .gsheet { backdrop-filter: blur(14px) saturate(180%) brightness(1.05) !important; }

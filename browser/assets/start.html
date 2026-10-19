@@ -1,0 +1,422 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rad</title>
+<link rel="stylesheet" href="glass.css">
+<link rel="stylesheet" href="widgets.css">
+<script src="widgets.js"></script>
+<style>
+  /* Same layout as the TV home screen: greeting and date left, weather and clock right, the wallpaper
+     blurred behind everything, and a row of wide tiles at the bottom (bookmarks instead of apps). */
+  body { height: 100vh; overflow: hidden; padding: 28px 48px 0; display: flex; flex-direction: column; }
+  .wall { position: fixed; inset: 0; z-index: -2; background: #0b0b12; }
+  .wall img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0;
+    transition: opacity 1.4s ease; image-rendering: high-quality; }
+  .wall img.on { opacity: 1; }
+  .dim { position: fixed; inset: 0; z-index: -1;
+    background: linear-gradient(180deg, rgba(0,0,0,.55) 0, rgba(0,0,0,.08) 26%, rgba(0,0,0,0) 45%,
+      rgba(0,0,0,.25) 62%, rgba(0,0,0,.72) 100%); }
+  .hello, .date, .temp, .clock, .days, .caption, .label { text-shadow: 0 1px 8px rgba(0,0,0,.45); }
+
+  .top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .hello { font-size: 30px; font-weight: 600; }
+  .date { font-size: 14px; color: var(--dim); margin-top: 5px; }
+  .right { text-align: right; }
+  .now { display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
+  .temp { font-size: 22px; font-weight: 300; }
+  .sep { width: 1px; height: 26px; background: rgba(255,255,255,.25); }
+  .clock { font-size: 34px; font-weight: 300; }
+  .days { font-size: 13px; color: var(--dim); margin-top: 6px; }
+
+  .middle { flex: 1; }
+  .dock { display: flex; flex-direction: column; align-items: center; gap: 18px; padding-bottom: 34px; }
+  .favs { width: 100%; }
+  /* On light photos the clear glass turns to smoked glass, still with its light top edge. */
+  body.lightbg .gbar, body.lightbg .plus, body.lightbg .card {
+    background: linear-gradient(180deg, rgba(20,20,26,.42), rgba(20,20,26,.32)) !important;
+    backdrop-filter: blur(10px) saturate(150%) !important; -webkit-backdrop-filter: blur(10px) saturate(150%) !important; }
+  .gbar, .plus, .card { transition: background .6s ease; }
+  /* While typing, the bar rises above the TV keyboard (which covers the bottom half) and the rest steps back. */
+  .dock, .favs { transition: transform .28s cubic-bezier(.2,.8,.2,1), opacity .2s; }
+  body.typing .favs { opacity: 0; pointer-events: none; }
+  /* Sits just above the keyboard (Glass Keys takes the bottom ~48%). */
+  body.typing .gbar { position: fixed; left: 50%; bottom: calc(51vh + 14px); transform: translateX(-50%); }
+  .gbar { transition: transform .28s cubic-bezier(.2,.8,.2,1); }
+  .favs .label { margin: 0 0 10px; text-align: center; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.7) !important; }
+  .brand { font-size: 13px; font-weight: 600; letter-spacing: 7px; color: rgba(255,255,255,.55); }
+  /* Liquid glass search bar: nearly clear, light blur, bright edge lighting and a moving-light highlight. */
+  .gbar { position: relative; width: min(980px, 80vw); height: 48px; border-radius: 24px; display: flex;
+    align-items: center; gap: 2px; padding: 0 6px 0 8px; overflow: hidden;
+    background: rgba(255,255,255,.07);
+    backdrop-filter: blur(10px) saturate(210%) brightness(1.12) contrast(1.05);
+    -webkit-backdrop-filter: blur(10px) saturate(210%) brightness(1.12) contrast(1.05);
+    border: 1px solid rgba(255,255,255,.55);
+    box-shadow:
+      inset 0 2px 3px rgba(255,255,255,.55),      /* top lip catching light */
+      inset 0 -2px 5px rgba(255,255,255,.28),     /* bottom refraction glow */
+      inset 3px 0 6px rgba(255,255,255,.14), inset -3px 0 6px rgba(255,255,255,.14),
+      0 1px 0 rgba(255,255,255,.18), 0 12px 32px rgba(0,0,0,.25); }
+  .gbar::before { content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: 24px;
+    background: linear-gradient(100deg, rgba(255,255,255,.34) 0%, rgba(255,255,255,.06) 22%, rgba(255,255,255,0) 50%,
+      rgba(255,255,255,.05) 78%, rgba(255,255,255,.22) 100%); }
+  .gbar::after { content: ''; position: absolute; left: 12%; right: 12%; top: 0; height: 1px; pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.95), transparent); }
+  .gbtn { position: relative; width: 36px; height: 36px; border-radius: 18px; display: grid; place-items: center; flex: 0 0 auto;
+    cursor: pointer; transition: background .14s, transform .14s; }
+  .gbtn:hover { background: rgba(10,132,255,.85); transform: scale(1.1); }
+  .gbtn svg { width: 19px; height: 19px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .gbar form { position: relative; flex: 1; margin: 0 6px; }
+  .gbar input { width: 100%; font-size: 14px; padding: 7px 14px; border-radius: 18px; outline: none; color: #fff;
+    text-align: center; background: transparent; border: 1px solid transparent; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+  .gbar input:focus { border-color: rgba(10,132,255,.9); background: rgba(0,0,0,.18); text-align: left; }
+  .gbar input::placeholder { color: rgba(255,255,255,.85); }
+  .chipb { display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 14px; font-size: 11px; font-weight: 500; white-space: nowrap;
+    background: rgba(52,199,89,.28); border: 1px solid rgba(52,199,89,.55); margin-left: 4px; }
+  .stats { font-size: 12px; color: rgba(255,255,255,.5); }
+  .stats b { color: #7cf29c; font-weight: 600; }
+
+  .row { display: flex; justify-content: safe center; gap: 9px; padding: 10px 6px 6px; overflow-x: auto; scrollbar-width: none; }
+  .row::-webkit-scrollbar { display: none; }
+  .tile { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #fff; }
+  .card { position: relative; width: 80px; height: 52px; border-radius: 13px; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    /* liquid glass, like the search bar: clear, a light top edge, nothing white over the picture */
+    background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0) 55%, rgba(255,255,255,.05)) !important;
+    backdrop-filter: saturate(160%) brightness(1.05); border: 0 !important;
+    transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s, background .2s;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.8), inset 0 -1px 0 rgba(255,255,255,.2),
+      inset 0 0 0 1px rgba(255,255,255,.25), 0 8px 20px rgba(0,0,0,.28); }
+  .card .site { font-size: 9px; font-weight: 600; max-width: 72px; text-shadow: 0 1px 3px rgba(0,0,0,.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile:hover .card { background: linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,.08)) !important; }
+  .card img { width: 19px; height: 19px; border-radius: 5px; }
+  .card .mono { font-size: 30px; font-weight: 700; }
+  .card::after { display: none; }
+  .card .shine { position: absolute; top: 0; bottom: 0; width: 60px; left: -70px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent); }
+  .tile:hover .card { transform: scale(1.1) translateY(-2px); box-shadow: 0 18px 34px rgba(0,0,0,.5); }
+  .tile:hover .shine { animation: shine .7s ease-out .1s; }
+  @keyframes shine { to { left: 170px; } }
+  .name { font-size: 13px; font-weight: 500; margin-top: 14px; opacity: 0; transform: translateY(-2px);
+    transition: opacity .2s, transform .2s; max-width: 156px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .name { display: none; }
+
+  /* Widgets: glass cards in the open space, plus a + card to add more. */
+  .middle { display: flex; align-items: center; justify-content: center; }
+  .widgets { display: flex; gap: 14px; align-items: stretch; }
+  .w { position: relative; width: 190px; min-height: 118px; padding: 12px 14px; border-radius: 18px;
+    background: linear-gradient(180deg, rgba(20,20,26,.55), rgba(20,20,26,.42));
+    backdrop-filter: blur(26px) saturate(160%); border: 1px solid rgba(255,255,255,.22);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 10px 26px rgba(0,0,0,.3); font-size: 12px; }
+  .w h4 { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; color: rgba(255,255,255,.6); margin-bottom: 8px; }
+  .w .wx { position: absolute; top: 7px; right: 8px; width: 18px; height: 18px; border-radius: 9px; font-size: 10px;
+    display: grid; place-items: center; background: rgba(255,255,255,.15); opacity: 0; cursor: pointer; }
+  .w:hover .wx { opacity: 1; }
+  .w .wx:hover { background: #ff453a; }
+  .game { display: flex; justify-content: space-between; padding: 2px 0; }
+  .game .st { color: rgba(255,255,255,.6); font-size: 11px; }
+  .game .st.live { color: #ff6961; }
+  .day { display: flex; justify-content: space-between; padding: 2px 0; }
+  .day { gap: 8px; white-space: nowrap; }
+  .day span:first-child { color: rgba(255,255,255,.65); width: 40px; flex: 0 0 40px; }
+  .day span:nth-child(2) { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  .clk { display: flex; justify-content: space-between; padding: 2px 0; }
+  .clk b { font-weight: 500; font-size: 14px; }
+  .note { width: 100%; height: 76px; resize: none; background: transparent; border: 0; outline: none;
+    color: #fff; font: inherit; font-size: 13px; }
+  /* The + for widgets: a small liquid glass circle beside the search bar. */
+  .rename { position: fixed; inset: 0; z-index: 6; display: none; place-items: center; background: rgba(0,0,0,.4); }
+  .rename.on { display: grid; }
+  .rename .sheet { width: 440px; padding: 20px; border-radius: 24px; background: rgba(24,24,30,.82); backdrop-filter: blur(20px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.6), inset 0 0 0 1px rgba(255,255,255,.2); }
+  .rename h3 { font-size: 16px; margin-bottom: 12px; }
+  .rename input { width: 100%; font-size: 16px; padding: 11px 16px; border-radius: 14px; color: #fff; outline: none;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.3); }
+  .rename .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  .rename .btns span { padding: 8px 18px; border-radius: 16px; cursor: pointer; font-size: 14px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.6), inset 0 0 0 1px rgba(255,255,255,.25); }
+  .rename .btns span:hover { background: rgba(255,255,255,.18); }
+  .plus { position: fixed; right: calc((100vw - min(980px, 80vw)) / 2 - 62px); bottom: 34px; width: 48px; height: 48px;
+    border-radius: 24px; display: grid; place-items: center; cursor: pointer; font-size: 26px; font-weight: 300; line-height: 1;
+    background: rgba(255,255,255,.07); backdrop-filter: blur(10px) saturate(210%) brightness(1.12);
+    border: 1px solid rgba(255,255,255,.55);
+    box-shadow: inset 0 2px 3px rgba(255,255,255,.55), inset 0 -2px 5px rgba(255,255,255,.28), 0 12px 32px rgba(0,0,0,.25);
+    transition: transform .15s, background .15s; }
+  .plus:hover { transform: scale(1.1); background: rgba(10,132,255,.8); }
+  .picker { position: fixed; inset: 0; display: none; place-items: center; background: rgba(0,0,0,.45); z-index: 5; }
+  .picker.on { display: grid; }
+  .picker .sheet { width: 520px; padding: 22px; border-radius: 26px; background: rgba(28,28,34,.82);
+    backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,.25); }
+  .picker h3 { font-size: 17px; margin-bottom: 14px; }
+  .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .opt { padding: 14px; border-radius: 16px; background: rgba(255,255,255,.1); cursor: pointer; }
+  .opt:hover { background: #0a84ff; }
+  .opt b { display: block; font-size: 14px; margin-bottom: 3px; }
+  .opt span { font-size: 11px; color: rgba(255,255,255,.7); }
+  .opt.have { opacity: .4; }
+  .tile.opening .card { transform: scale(.95) !important; background: linear-gradient(180deg, #0a84ff, #0064d2) !important;
+    transition: transform .08s, background .08s; }
+  .x { position: absolute; top: 5px; right: 6px; width: 20px; height: 20px; border-radius: 10px; font-size: 11px;
+    display: grid; place-items: center; background: rgba(0,0,0,.45); opacity: 0; }
+  .tile:hover .x { opacity: 1; }
+  .caption { position: fixed; right: 48px; top: 104px; font-size: 11px; color: rgba(255,255,255,.4); }
+</style>
+</head>
+<body>
+  <div class="wall" id="wall"><img id="w0" alt=""><img id="w1" alt=""></div>
+  <div class="dim"></div>
+
+  <div class="top">
+    <div><div class="hello" id="hello"></div><div class="date" id="date"></div></div>
+    <div class="right">
+      <div class="now"><div class="temp" id="temp"></div><div class="sep"></div><div class="clock" id="clock"></div></div>
+      <div class="days" id="days"></div>
+    </div>
+  </div>
+
+  <div class="middle"></div>
+  <div class="rename" id="rename"><div class="sheet"><h3>Rename favorite</h3><input id="rnInput" autocomplete="off">
+    <div class="btns"><span id="rnCancel">Cancel</span><span id="rnSave">Save</span></div></div></div>
+  <div class="plus" id="plus" title="Add a widget">+</div>
+  <div class="dock">
+    <div class="favs"><div class="label">Favorites</div><div class="row" id="bookmarks"></div></div>
+    <div class="gbar">
+      <div class="gbtn" id="toMarks" title="Bookmarks"><svg viewBox="0 0 24 24"><path d="M7 4.5h10v15l-5-4-5 4z"/></svg></div>
+      <form id="f"><input id="q" placeholder="Search Google or type a site" autocomplete="off"></form>
+      <div class="gbtn" id="mic" title="Speak"><svg viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="10.5" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3.5"/></svg></div>
+    </div>
+
+  </div>
+  <div class="caption" id="caption"></div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  // ---- greeting, date, clock
+  function tick() {
+    const d = new Date(), h = d.getHours();
+    $('hello').textContent = h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+    $('date').textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    $('clock').textContent = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M/, '');
+  }
+  tick();
+  setInterval(tick, 10000);
+
+  // ---- weather (Open-Meteo) for the place in HOME: change these three values to your own place
+  const HOME = { name: 'Denver', lat: 39.7392, lon: -104.9903 };
+  const wmo = c => c === 0 ? 'Clear' : c <= 2 ? 'Partly cloudy' : c === 3 ? 'Cloudy' : (c === 45 || c === 48) ? 'Fog'
+    : c <= 57 ? 'Drizzle' : c <= 67 ? 'Rain' : c <= 77 ? 'Snow' : c <= 82 ? 'Showers' : c <= 86 ? 'Snow showers' : 'Storms';
+  function showWeather(w) {
+    if (!w || !w.current) return;
+    $('temp').textContent = Math.round(w.current.temperature_2m) + '° ' + wmo(w.current.weather_code);
+    const dl = w.daily;
+    let s = 'H ' + Math.round(dl.temperature_2m_max[0]) + '°  L ' + Math.round(dl.temperature_2m_min[0]) + '°';
+    for (let i = 1; i < Math.min(4, dl.time.length); i++) {
+      const day = new Date(dl.time[i] + 'T12:00').toLocaleDateString('en-US', { weekday: 'short' });
+      s += '   ·   ' + day + ' ' + Math.round(dl.temperature_2m_max[i]) + '°';
+    }
+    $('days').textContent = s;
+  }
+  try { showWeather(JSON.parse(localStorage.wx || 'null')); } catch (e) {}
+  fetch('https://api.open-meteo.com/v1/forecast?latitude=' + HOME.lat + '&longitude=' + HOME.lon + '&current=temperature_2m,weather_code'
+      + '&daily=temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=auto&forecast_days=4')
+    .then(r => r.json()).then(w => { localStorage.wx = JSON.stringify(w); showWeather(w); }).catch(() => {});
+
+  // ---- wallpapers: Wikimedia Commons featured landscapes, the same source as the home screen
+  let walls = [];
+  try { walls = JSON.parse(localStorage.walls3 || '[]'); } catch (e) {}
+  let wi = Math.floor(Math.random() * Math.max(1, walls.length)), front = 0;
+  function nice(t) {
+    return t.replace(/^File:/, '').replace(/\.[a-z0-9]+$/i, '').replace(/\.edit\d*$/i, '').replace(/[_()]/g, ' ')
+      .split(/\s+/).filter(w => w && !/^\d+$|^[-\u2013]+$|^[A-Za-z]{0,4}\d{2,}\w*$|^(pano|panorama|edit\d*|crop|img|dsc\w*|hdr|juin|june)$/i.test(w))
+      .join(' ').split(/,\s*\d/)[0].replace(/^[\s,-]+|[\s,-]+$/g, '');
+  }
+  // Light photo behind the glass? Switch the glass to smoked so its text stays readable. Checks the strips
+  // where the bar sits: the bottom (normal) and the middle (while typing).
+  const probe = document.createElement('canvas');
+  probe.width = 64; probe.height = 36;
+  function adapt(img) {
+    try {
+      const g = probe.getContext('2d', { willReadFrequently: true });
+      g.drawImage(img, 0, 0, 64, 36);
+      const lum = (y0, y1) => {
+        const d = g.getImageData(8, y0, 48, y1 - y0).data;
+        let t = 0;
+        for (let i = 0; i < d.length; i += 4) t += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+        return t / (d.length / 4) / 255;
+      };
+      const light = Math.max(lum(29, 35), lum(14, 22)) > 0.52;
+      document.body.classList.toggle('lightbg', light);
+    } catch (e) { document.body.classList.remove('lightbg'); }
+  }
+  function showWall() {
+    if (!walls.length) return;
+    const w = walls[wi % walls.length];
+    const img = $('w' + (1 - front));
+    img.crossOrigin = 'anonymous';
+    img.onload = () => { img.classList.add('on'); $('w' + front).classList.remove('on'); front = 1 - front; $('caption').textContent = nice(w.title); adapt(img); };
+    img.src = w.url;
+    wi++;
+  }
+  showWall();
+  setInterval(showWall, 15000);
+  if (!walls.length || Date.now() - (+localStorage.walls3At || 0) > 7 * 864e5) {
+    const cats = ['Featured_pictures_of_landscapes', 'Featured_pictures_of_mountains', 'Featured_pictures_of_lakes'];
+    Promise.all(cats.map(c => fetch('https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*'
+        + '&generator=categorymembers&gcmtitle=Category:' + c + '&gcmtype=file&gcmlimit=60'
+        + '&prop=imageinfo&iiprop=url|size&iiurlwidth=2560').then(r => r.json()).catch(() => null)))
+      .then(res => {
+        const out = [];
+        res.forEach(r => r && r.query && Object.values(r.query.pages).forEach(p => {
+          const i = p.imageinfo && p.imageinfo[0];
+          if (i && i.thumburl && i.width > i.height * 1.3) out.push({ url: i.thumburl, title: p.title });
+        }));
+        if (out.length) {
+          out.sort(() => Math.random() - .5);
+          walls = out.slice(0, 40);
+          localStorage.walls3 = JSON.stringify(walls);
+          localStorage.walls3At = Date.now();
+          if (!$('w0').src && !$('w1').src) showWall();
+        }
+      });
+  }
+
+  // ---- bookmarks row: saved sites
+  const palette = ['#ff3d81,#7c3aed', '#0a84ff,#5e5ce6', '#30d158,#0a84ff', '#ff9f0a,#ff3d81', '#bf5af2,#5e5ce6', '#64d2ff,#0a84ff'];
+  function color(s) { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0; return palette[Math.abs(h) % palette.length]; }
+  function tile(href, name, inner, grad, removable) {
+    const a = document.createElement('a');
+    a.className = 'tile';
+    a.href = href;
+    a.innerHTML = '<div class="card" style="background:linear-gradient(135deg,' + grad + ')">' + inner
+      + '<div class="shine"></div>' + (removable ? '<div class="x">✕</div>' : '') + '</div><div class="name"></div>';
+    a.querySelector('.name').textContent = name;
+    return a;
+  }
+  function renderBookmarks() {
+    const row = $('bookmarks');
+    row.innerHTML = '';
+    let any = false;
+    // "Last page" comes first: back to wherever you were.
+    try {
+      const last = JSON.parse(Rad.lastPage());
+      if (last.url) {
+        let lh = '';
+        try { lh = new URL(last.url).hostname; } catch (e) {}
+        const t = tile(last.url, last.title || lh,
+          '<img src="https://www.google.com/s2/favicons?sz=128&domain=' + encodeURIComponent(lh) + '"><div class="site">Last page</div>', '', false);
+        t.classList.add('last');
+        row.append(t);
+      }
+    } catch (e) {}
+    let favs = [];
+    try { favs = JSON.parse(Rad.favorites()); } catch (e) {}
+    for (const f of favs) {
+      let host = '';
+      try { host = new URL(f.url).hostname; } catch (e) {}
+      any = true;
+      const t = tile(f.url, f.title || host,
+        '<img src="https://www.google.com/s2/favicons?sz=128&domain=' + encodeURIComponent(host) + '"><div class="site"></div>', color(host), true);
+      t.querySelector('.site').textContent = (f.title || host).split(/\s[-\u2013\u2014|:]\s/)[0];
+      t.querySelector('img').onerror = function () {
+        const m = document.createElement('div'); m.className = 'mono';
+        m.textContent = (f.title || host || '?').trim().charAt(0).toUpperCase(); this.replaceWith(m); };
+      t.querySelector('.x').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); Rad.removeFavorite(f.url); renderBookmarks(); });
+      row.append(t);
+    }
+  }
+  renderBookmarks();
+  window.addEventListener('pageshow', renderBookmarks);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) renderBookmarks(); });
+
+  // Open a favorite the moment it is pressed, with the card pressing in at once.
+  document.addEventListener('pointerdown', e => {
+    const t = e.target.closest && e.target.closest('a.tile');
+    if (!t || (e.target.closest('.x'))) return;
+    e.preventDefault();
+    t.classList.add('opening');
+    location.href = t.href;
+  }, true);
+
+  // Warm up every favorite while this page is open: connect early and fetch its front page into the cache.
+  setTimeout(() => {
+    let favs = [];
+    try { favs = JSON.parse(Rad.favorites()); } catch (e) {}
+    for (const f of favs) {
+      try {
+        const origin = new URL(f.url).origin;
+        for (const rel of ['dns-prefetch', 'preconnect']) {
+          const l = document.createElement('link'); l.rel = rel; l.href = origin; document.head.append(l);
+        }
+        const p = document.createElement('link'); p.rel = 'prefetch'; p.href = f.url; document.head.append(p);
+      } catch (e) {}
+    }
+  }, 300);
+  if (location.hash === '#bookmarks') document.querySelector('.tile')?.scrollIntoView({ inline: 'center' });
+
+  // ---- search and shield stats
+  $('toMarks').addEventListener('click', () => document.querySelector('.tile')?.scrollIntoView({ behavior: 'smooth', inline: 'center' }));
+  $('mic').addEventListener('click', e => { e.preventDefault(); Rad.voice(); });
+  $('q').addEventListener('focus', () => document.body.classList.add('typing'));
+  $('q').addEventListener('blur', () => document.body.classList.remove('typing'));
+  window.visualViewport && visualViewport.addEventListener('resize', () => {
+    if (visualViewport.height > innerHeight * 0.9 && document.activeElement !== $('q')) document.body.classList.remove('typing');
+  });
+  $('f').addEventListener('submit', e => { e.preventDefault(); Rad.go($('q').value); });
+  function stats() {
+    try {
+      const s = JSON.parse(Rad.stats());
+      if ($('stats')) $('stats').textContent = s.rules ? s.total.toLocaleString() + ' blocked' : 'Shields loading';
+    } catch (e) {}
+  }
+  stats();
+  setInterval(stats, 3000);
+
+  // ---- widgets: the shared Rad Widgets engine (widgets.js), with Rad as its host
+  function icsEvents(text, color) {
+    const out = [], un = text.replace(/\r?\n[ \t]/g, '');
+    const t = v => {
+      const m = (v || '').match(/(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?/);
+      if (!m) return 0;
+      return m[4] ? (m[7] ? Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : new Date(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime())
+        : new Date(+m[1], m[2] - 1, +m[3]).getTime();
+    };
+    un.split('BEGIN:VEVENT').slice(1).forEach(b => {
+      const g = k => { const m = b.match(new RegExp('\\n' + k + '[^:\\n]*:([^\\r\\n]*)')); return m ? m[1] : ''; };
+      const s0 = t(g('DTSTART')), e0 = t(g('DTEND')) || s0;
+      if (s0) out.push({ title: g('SUMMARY').replace(/\\,/g, ','), start: s0, end: e0, allDay: /DTSTART;VALUE=DATE:/.test(b), color });
+    });
+    return out;
+  }
+  const waits = {};
+  window.radDone = (id, text) => { const f = waits[id]; delete waits[id]; if (f) f(text); };
+  function radGet(url) {
+    if (!Rad.fetchAsync) return fetch(url).then(r => r.text());
+    return new Promise(res => { const id = 'w' + Math.random().toString(36).slice(2); waits[id] = res; Rad.fetchAsync(url, id); });
+  }
+  RadWidgets.mount({
+    get: k => Rad.get(k),
+    set: (k, v) => Rad.set(k, v),
+    keys: on => { try { Rad.keys && Rad.keys(on); } catch (e) {} },
+    fetch: radGet,
+    calendar: () => {
+      let links = [];
+      try { links = JSON.parse(Rad.get('ics') || '[]'); } catch (e) {}
+      const colors = ['#ff453a', '#bf5af2', '#30d158', '#0a84ff'];
+      return Promise.all(links.map((u, i) => radGet(u.replace(/^webcal:/, 'https:')).then(t => icsEvents(t || '', colors[i % 4])).catch(() => [])))
+        .then(a => a.flat());
+    },
+    photos: () => walls.map(w => w.url),
+    speed: () => new Promise((res, rej) => {
+      if (!Rad.speedTest) return rej();
+      const id = 's' + Math.random().toString(36).slice(2);
+      waits[id] = t => { try { const r = JSON.parse(t); r.down != null ? res(r) : rej(); } catch (e) { rej(); } };
+      Rad.speedTest(id);
+    }),
+  });
+  $('plus').onclick = () => RadWidgets.add();
+  window.radBack = () => RadWidgets.back();
+</script>
+</body>
+</html>

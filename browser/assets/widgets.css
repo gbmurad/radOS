@@ -1,0 +1,77 @@
+/* Rad Widgets: liquid glass widgets shared by Rad's start page and the TV home screen. */
+.rw-layer { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
+.rw { position: absolute; pointer-events: auto; border-radius: 20px; padding: 11px 14px; box-sizing: border-box; color: #fff; overflow: hidden;
+  font-family: system-ui, sans-serif; text-shadow: 0 1px 3px rgba(0,0,0,.45);
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0) 50%, rgba(255,255,255,.05));
+  backdrop-filter: saturate(160%) brightness(1.04); -webkit-backdrop-filter: saturate(160%) brightness(1.04);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8), inset 0 -1px 0 rgba(255,255,255,.2), inset 0 0 0 1px rgba(255,255,255,.24),
+    0 12px 30px rgba(0,0,0,.28);
+  transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s; }
+.rw.smoke { background: linear-gradient(180deg, rgba(18,18,24,.55), rgba(18,18,24,.42));
+  backdrop-filter: blur(14px) saturate(150%); -webkit-backdrop-filter: blur(14px) saturate(150%); }
+.rw.tint-blue { background: linear-gradient(180deg, rgba(10,132,255,.42), rgba(10,90,200,.3)); }
+.rw.tint-pink { background: linear-gradient(180deg, rgba(255,61,129,.4), rgba(124,58,237,.3)); }
+.rw.tint-green { background: linear-gradient(180deg, rgba(48,209,88,.36), rgba(10,132,255,.24)); }
+.rw:hover, .rw.focus { transform: scale(1.03); box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 0 0 1.5px rgba(255,255,255,.55), 0 16px 36px rgba(0,0,0,.35); }
+.rw.moving { transform: scale(1.06); box-shadow: inset 0 0 0 2px #fff, 0 20px 44px rgba(0,0,0,.45); z-index: 3; }
+.rw.s { width: 150px; height: 92px; } .rw.m { width: 300px; height: 92px; } .rw.l { width: 300px; height: 196px; }
+.rw h5 { margin: 0 0 8px; font-size: 10px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; color: rgba(255,255,255,.72); }
+.rw .rw-big { font-size: 28px; font-weight: 300; line-height: 1; }
+.rw .rw-mid { font-size: 15px; font-weight: 600; }
+.rw .rw-dim { color: rgba(255,255,255,.7); font-size: 12px; }
+.rw .rw-row { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.rw .rw-sp { flex: 1; }
+.rw img.rw-logo { width: 22px; height: 22px; object-fit: contain; }
+.rw .rw-game { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 13px; }
+.rw .rw-game b { font-weight: 700; }
+.rw .rw-live { color: #ff6961; font-weight: 700; }
+.rw .rw-ev { display: flex; gap: 8px; align-items: center; font-size: 13px; padding: 2px 0; }
+.rw .rw-ev i { width: 3px; height: 14px; border-radius: 2px; flex: 0 0 3px; }
+.rw .rw-ev span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rw .rw-days { display: flex; justify-content: space-between; margin-top: 10px; }
+.rw .rw-days div { text-align: center; font-size: 12px; }
+.rw .rw-photo { position: absolute; inset: 0; background: center / cover no-repeat; }
+.rw textarea { width: 100%; height: calc(100% - 22px); resize: none; background: transparent; border: 0; outline: none; color: #fff;
+  font: 14px system-ui, sans-serif; text-shadow: inherit; }
+.rw .rw-count { font-size: 30px; font-weight: 300; }
+
+/* Options sheet: shown when a widget is held, and the add sheet. */
+.rw-sheet { position: fixed; inset: 0; z-index: 9; display: none; place-items: center; background: rgba(0,0,0,.42); pointer-events: auto; }
+.rw-sheet.on { display: grid; }
+.rw-card { width: 520px; max-height: 80vh; overflow: auto; padding: 20px 22px; border-radius: 26px; color: #fff; font-family: system-ui, sans-serif;
+  background: rgba(22,22,28,.84); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.6), inset 0 0 0 1px rgba(255,255,255,.18), 0 20px 50px rgba(0,0,0,.5); }
+.rw-card h3 { margin: 0 0 14px; font-size: 18px; }
+.rw-card .lbl { font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: rgba(255,255,255,.6); margin: 14px 0 6px; }
+.rw-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.rw-chip { padding: 8px 14px; border-radius: 16px; font-size: 13px; cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 0 0 1px rgba(255,255,255,.22); }
+.rw-chip:hover { background: rgba(255,255,255,.16); }
+.rw-chip.on { background: rgba(255,255,255,.9); color: #111; text-shadow: none; }
+.rw-card input { width: 100%; box-sizing: border-box; font-size: 15px; padding: 10px 14px; border-radius: 14px; color: #fff; outline: none;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.3); }
+.rw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rw-pick { padding: 14px; border-radius: 18px; cursor: pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 0 0 1px rgba(255,255,255,.2); }
+.rw-pick:hover { background: rgba(255,255,255,.14); }
+.rw-pick b { display: block; font-size: 15px; } .rw-pick span { font-size: 12px; color: rgba(255,255,255,.65); }
+.rw-foot { display: flex; justify-content: space-between; margin-top: 18px; }
+.rw-hint { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 10; padding: 10px 20px; border-radius: 20px;
+  background: rgba(22,22,28,.85); color: #fff; font: 14px system-ui; display: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); }
+.rw-hint.on { display: block; }
+
+/* moving: everything else dims, as on the home screen */
+.rw-movedim { position: fixed; inset: 0; z-index: 1; background: rgba(0,0,0,.45); opacity: 0; pointer-events: none; transition: opacity .18s; }
+.rw-movedim.on { opacity: 1; }
+.rw { transition: transform .16s, box-shadow .16s; }
+/* the scores drum */
+.rw-drum { position: relative; height: 52px; perspective: 260px; overflow: hidden; margin-top: -2px; }
+.rw-drum .rw-game { position: absolute; left: 0; right: 0; top: 13px; height: 26px; margin: 0; transform-origin: 50% 50% -20px;
+  transition: transform .75s cubic-bezier(.45,0,.25,1), opacity .75s; backface-visibility: hidden; }
+.rw.l .rw-drum { height: 150px; }
+.rw.l .rw-drum .rw-game { top: 62px; }
+.rw-lg { font-size: 9px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,.55); width: 34px; flex: 0 0 34px; }
+.rw-layer.moving .rw:not(.moving) { opacity: .4; }
+.rw-drum .rw-game { gap: 6px; font-size: 12px; white-space: nowrap; }
+.rw-drum .rw-game .rw-row { gap: 5px; }
+.rw-drum .rw-game > span:last-child { flex: 0 0 auto; font-size: 11px; }
+.rw-lg { width: 30px; flex-basis: 30px; }
